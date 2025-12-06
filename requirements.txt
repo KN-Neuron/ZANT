@@ -3,3 +3,4 @@ pydantic-ai
 google-generativeai
 python-dotenv
 django
+reportlab
