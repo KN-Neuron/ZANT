@@ -100,6 +100,16 @@ class DescriptionVerificationResult(BaseModel):
         ),
     )
 
+    proponowana_tresc_uzasadnienia: str = Field(
+        description=(
+            "Gotowy, sformalizowany tekst uzasadnienia do Karty Wypadku. "
+            "Musi być napisany językiem urzędowym, w formacie: "
+            "'W dniu [DATA] podczas wykonywania [CZYNNOŚĆ] doszło do [ZDARZENIE]. "
+            "W wyniku zdarzenia poszkodowany doznał [URAZ]. "
+            "Zdarzenie spełnia/nie spełnia przesłanek definicji wypadku przy pracy, ponieważ...'"
+        )
+    )
+
 class WyjasnieniaPoszkodowanego(BaseModel):
     okolicznosci_i_przyczyny: str = Field(
         ...,
