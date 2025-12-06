@@ -1,0 +1,10 @@
+# Local environment
+.vscode
+
+# Build files
+dist
+node_modules
+
+# Python cache
+__pycache__
+*.pyc
