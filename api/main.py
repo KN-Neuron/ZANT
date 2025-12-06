@@ -4,6 +4,7 @@ import time
 import argparse
 from typing import Optional
 
+from api.analyzer import analyze_notification
 from parser import Parser
 from inspector import Inspector
 from dto import ZawiadomienieOWypadku, WyjasnieniaPoszkodowanego

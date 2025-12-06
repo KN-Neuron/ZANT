@@ -121,5 +121,5 @@ class WyjasnieniaPoszkodowanego(BaseModel):
 class Decision(BaseModel):
     status: str
     uzasadnienie: Optional[str] = Field(description="Opis okoliczności i przyczyn wypadku")
-    braki: Optional[List[str]] = None
+    braki: Optional[list[str]] = None
     wiadomosc_do_klienta: Optional[str] = None

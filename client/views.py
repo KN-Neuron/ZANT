@@ -7,15 +7,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.shortcuts import render
 
-# Importujemy Twoją logikę z folderu api
-# Upewnij się, że w api/__init__.py jest pusto lub odpowiedni import, 
-# a folder api jest w PYTHONPATH (w Django zazwyczaj root jest ok)
-try:
-    from api.parser import Parser
-    from api.inspector import Inspector
-    from api.dto import WyjasnieniaPoszkodowanego
-except ImportError as e:
-    print(f"Błąd importu modułów API: {e}")
+# Bezpośrednie importy - jeśli tu jest błąd, Django o tym powie od razu
+from api.parser import Parser
+from api.inspector import Inspector
+from api.dto import WyjasnieniaPoszkodowanego
 
 # Folder na pliki tymczasowe
 TEMP_DIR = os.path.join(settings.BASE_DIR, 'temp_uploads')
@@ -27,7 +22,7 @@ def index(request):
     return render(request, 'index.html')
 
 
-@csrf_exempt  # Wyłączamy CSRF dla ułatwienia na hackathonie (w produkcji użyj tokenów)
+@csrf_exempt
 def analyze_accident(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -38,7 +33,7 @@ def analyze_accident(request):
     if not zawiadomienie_file:
         return JsonResponse({'error': 'Brak pliku zawiadomienia'}, status=400)
 
-    # 1. Zapisz pliki tymczasowo na dysku (bo Twoje api oczekuje ścieżek)
+    # 1. Zapisz pliki tymczasowo na dysku
     session_id = str(uuid.uuid4())
     z_ext = os.path.splitext(zawiadomienie_file.name)[1]
     z_path = os.path.join(TEMP_DIR, f"{session_id}_zaw{z_ext}")
@@ -56,7 +51,7 @@ def analyze_accident(request):
                 destination.write(chunk)
 
     try:
-        # 2. Inicjalizacja Twoich serwisów
+        # 2. Inicjalizacja serwisów
         parser_service = Parser()
         inspector_service = Inspector()
 
@@ -68,16 +63,15 @@ def analyze_accident(request):
         if w_path:
             parsed_wyj = parser_service.parse_wyjasnienia(w_path)
         else:
-            # Pusty obiekt jeśli brak wyjaśnień
             parsed_wyj = WyjasnieniaPoszkodowanego(okolicznosci_i_przyczyny="Brak załączonych wyjaśnień.")
 
         if not parsed_zaw:
             return JsonResponse({'error': 'Nie udało się odczytać zawiadomienia (PDF/OCR error)'}, status=422)
 
-        # 4. Inspektor (AI)
+        # 4. Inspektor
         verification = inspector_service.verify_description(parsed_zaw, parsed_wyj)
 
-        # 5. Przygotowanie wyniku
+        # 5. Wynik
         result = {
             "dane_wniosku": parsed_zaw.model_dump() if parsed_zaw else None,
             "analiza_ai": verification.model_dump() if verification else None,
@@ -88,10 +82,10 @@ def analyze_accident(request):
 
     except Exception as e:
         print(f"Błąd przetwarzania: {e}")
+        # Ważne: rzutujemy e na str, żeby JSON był poprawny
         return JsonResponse({'error': str(e)}, status=500)
 
     finally:
-        # 6. Sprzątanie plików
         if os.path.exists(z_path):
             os.remove(z_path)
         if w_path and os.path.exists(w_path):
