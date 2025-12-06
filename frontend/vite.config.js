@@ -16,6 +16,14 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  server: {
+    proxy: {
+      '/raport-wypadku': {
+        target: 'http://127.0.0.1:8000', // Adres Twojego Django
+        changeOrigin: true,
+      }
+    }
+  },
   build: {
     rollupOptions: {
       input: {
