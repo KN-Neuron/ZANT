@@ -16,9 +16,9 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path, include
 from django.views.generic import RedirectView
 from django.shortcuts import render
+from django.urls import path, include, re_path
 
 def render_vue(request):
     return render(request, "index.html")
