@@ -152,11 +152,11 @@ class FormDataInput(BaseModel):
 class ValidationResult(BaseModel):
     feedback: str = Field(
         description=(
-            "Krótka, ekspercka informacja zwrotna dla użytkownika (max 3-4 zdania). "
-            "Ocenia 4 filary wypadku: Nagłość, Przyczyna Zewnętrzna, Uraz, Związek z pracą. "
-            "Jeśli brakuje przyczyny zewnętrznej, zawiera pytanie pomocnicze."
-        )
-    )
+            "Krótka, ekspercka informacja zwrotna dla użytkownika (max 3-4 zdania) plus pytania naprowadzające. "
+            "Ocenia 4 filary wypadku (czy występują): Nagłość, Przyczyna Zewnętrzna, Uraz, Związek z pracą. "
+            "Jeśli brakuje jakichkolwiek informacji, zadaj pytanie pomocnicze."
+
+        ))
     is_complete: bool = Field(
         description="Czy opis zawiera wszystkie 4 elementy wymagane ustawowo (True/False)."
     )
