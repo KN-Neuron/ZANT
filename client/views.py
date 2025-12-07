@@ -2,6 +2,8 @@ import os
 import json
 import uuid
 import io
+from logging import getLogger
+
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
@@ -13,19 +15,84 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
 # Importy API
 from api.parser import Parser
 from api.inspector import Inspector
-from api.dto import WyjasnieniaPoszkodowanego
+from api.dto import WyjasnieniaPoszkodowanego, FormDataInput
+from api.user_input_validator import UserInputValidator
 
 TEMP_DIR = os.path.join(settings.BASE_DIR, 'temp_uploads')
 os.makedirs(TEMP_DIR, exist_ok=True)
+
+logger = getLogger(__name__)
 
 
 def index(request):
     return render(request, 'index.html')
 
 
+@api_view(['POST'])
+def validate_accident_data(request):
+    """
+    Endpoint walidujący opis zdarzenia pod kątem BHP.
+    Obsługuje zarówno prosty tekst (czat), jak i pełny formularz.
+    """
+    try:
+        data = request.data
+        logger.info(f"Otrzymano dane do walidacji: {data}")
+
+        # 1. Ekstrakcja opisu (zależnie od źródła)
+        description_text = ""
+
+        # Przypadek A: Dane z czatu (StartForm) -> { "text": "..." }
+        if 'text' in data:
+            description_text = data['text']
+
+        # Przypadek B: Dane z formularza (AccidentNotificationForm)
+        elif 'accident' in data:
+            description_text = data.get('accident', {}).get('circumstances', '')
+
+        # Przypadek C: Dane z wyjaśnień (VictimExplanationForm)
+        elif 'description' in data:
+            description_text = data.get('description', {}).get('text', '')
+
+        if not description_text:
+            description_text = ""
+
+        # 2. Ekstrakcja dodatkowych pól (tylko jeśli pochodzą z pełnego formularza)
+        injuries = data.get('accident', {}).get('injuries', '')
+        # activities = data.get(...) # Jeśli masz pole czynności
+        # external_cause = data.get(...) # Jeśli masz pole przyczyny
+
+        # 3. Budowa DTO
+        validator_input = FormDataInput(
+            notification_desc=description_text,
+            victim_desc="",
+            injuries=injuries,
+            activities="",
+            external_cause=""
+        )
+
+        # 4. Uruchomienie AI
+        validator = UserInputValidator()
+        result = validator.validate_user_input(validator_input)
+
+        if result:
+            return Response(result.model_dump())
+        else:
+            # Fallback jeśli validator zwrócił None (np. błąd API Gemini)
+            return Response({
+                "feedback": "Nie udało się połączyć z asystentem AI.",
+                "is_complete": False
+            })
+
+    except Exception as e:
+        logger.exception("Błąd w validate_accident_data")
+        # Zwracamy 500 z treścią błędu, żebyś widział co się dzieje w konsoli przeglądarki
+        return Response({"error": str(e)}, status=500)
 @csrf_exempt
 def analyze_accident(request):
     # ... (bez zmian - logika analizy pozostaje taka sama jak w poprzednim kroku)

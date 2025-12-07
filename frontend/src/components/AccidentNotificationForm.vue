@@ -1,9 +1,12 @@
 <script setup>
 import { reactive, watch, nextTick } from 'vue'
 import { store } from '@/stores/step.js'
+import { useFormStore } from '@/stores/form.js'
 
 // helper
 const isActive = (n) => store.step === n
+
+const formStore = useFormStore()
 
 // small directive to toggle "inert/disabled" state for inner controls
 // it will:
@@ -147,6 +150,11 @@ const formData = reactive({
     signature: ''
   }
 })
+
+function triggerCheckAndPdf() {
+    // Ustawiamy flagę w store - StartForm to wykryje i uruchomi walidację
+    store.triggerValidation = true
+}
 </script>
 
 <template>
@@ -363,7 +371,12 @@ const formData = reactive({
 
     <div class="flex justify-end gap-4 mt-8">
         <button class="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium">Anuluj</button>
-        <button class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium">Generuj PDF</button>
+        <button
+            @click="triggerCheckAndPdf"
+            class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+        >
+            Generuj PDF
+        </button>
     </div>
 
   </div>

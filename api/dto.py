@@ -43,7 +43,7 @@ class InformacjaOWypadku(BaseModel):
     placowka: str | None = Field(
         None,
         description="Nazwa placówki, w której została udzielona "
-        "pierwsza pomoc (jeżeli zostałą udzielona)",
+                    "pierwsza pomoc (jeżeli zostałą udzielona)",
     )
     urazy: str = Field(description="Rodzaj doznanych urazów")
     opis: str = Field(
@@ -110,6 +110,7 @@ class DescriptionVerificationResult(BaseModel):
         )
     )
 
+
 class WyjasnieniaPoszkodowanego(BaseModel):
     okolicznosci_i_przyczyny: str = Field(
         ...,
@@ -128,27 +129,29 @@ class WyjasnieniaPoszkodowanego(BaseModel):
         description="Nazwa placówki medycznej, w której poszkodowany otrzymał pierwszą pomoc (jeżeli dotyczy)"
     )
 
+
 class Decision(BaseModel):
     status: str
     uzasadnienie: Optional[str] = Field(description="Opis okoliczności i przyczyn wypadku")
     braki: Optional[list[str]] = None
     wiadomosc_do_klienta: Optional[str] = None
 
-class ValidationResult2(BaseModel):
-    feedback: str = Field(
-        description=(
-            "Przyjazna, kompletna wiadomość dla użytkownika. "
-            "Zawiera sugestie poprawy, pytania pomocnicze oraz zachętę. "
-            "Wyjaśnia, dlaczego warto dodać szczegóły (szansa na uznanie wypadku)."
-        )
-    )
-    is_complete: bool = Field(
-        description="Czy opis wydaje się na tyle kompletny, że można go zaakceptować (True/False)."
-    )
 
-class FormDataInput2(BaseModel):
-    notification_desc: str = ""
-    victim_desc: str = ""
+class FormDataInput(BaseModel):
+    notification_desc: str = ""  # Opis ze zgłoszenia
+    victim_desc: str = ""        # Opis z wyjaśnień (lub czatu)
     injuries: str = ""
     activities: str = ""
     external_cause: str = ""
+
+class ValidationResult(BaseModel):
+    feedback: str = Field(
+        description=(
+            "Krótka, ekspercka informacja zwrotna dla użytkownika (max 3-4 zdania). "
+            "Ocenia 4 filary wypadku: Nagłość, Przyczyna Zewnętrzna, Uraz, Związek z pracą. "
+            "Jeśli brakuje przyczyny zewnętrznej, zawiera pytanie pomocnicze."
+        )
+    )
+    is_complete: bool = Field(
+        description="Czy opis zawiera wszystkie 4 elementy wymagane ustawowo (True/False)."
+    )

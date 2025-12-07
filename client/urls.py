@@ -5,4 +5,5 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('api/analyze/', views.analyze_accident, name='analyze_accident'),
     path('api/generate-pdf/', views.generate_pdf, name='generate_pdf'),
+    path('api/validate/', views.validate_accident_data, name='validate_description'),
 ]
