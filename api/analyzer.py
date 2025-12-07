@@ -10,7 +10,7 @@ if not api_key:
     raise ValueError("Brak GEMINI_API_KEY w .env")
 
 agent = Agent(
-    model="google-gla:gemini-2.5-pro",
+    model="google-gla:gemini-2.5-flash",
     output_type=Decision,
     system_prompt=(
         "Analizujesz dokument: Zawiadomienie o wypadku przy pracy.\n"
