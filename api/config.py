@@ -1,4 +1,4 @@
-MODEL = "google-gla:gemini-2.5-pro"
+MODEL = "google-gla:gemini-2.5-flash"
 
 SYTEM_PROMPT = (
     "Jesteś parserem formularzy ZUS. "
