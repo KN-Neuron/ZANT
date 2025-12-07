@@ -1,5 +1,5 @@
 <template>
-  <div class="robot -translate-x-12 translate-y-4">
+  <div class="robot">
     <div class="head tilt">
       <span class="eye">^</span>
       <span class="mouth">v</span>
@@ -25,7 +25,6 @@
 
 <style scoped>
 .robot {
-  position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
