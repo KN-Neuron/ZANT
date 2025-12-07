@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 
 const zawiadomienieFile = ref(null)
 const wyjasnieniaFile = ref(null)
@@ -83,6 +83,31 @@ const submitForm = async () => {
   }
 }
 
+const statusClass = computed(() => {
+  const status = result.value?.analiza_ai?.status
+  if (!status) return 'bg-gray-100 text-gray-800 border-gray-300'
+
+  switch (status) {
+    case 'Do akceptacji':
+      return 'bg-green-100 text-green-800 border-green-300'
+    case 'Do odrzucenia':
+      return 'bg-red-100 text-red-800 border-red-300'
+    case 'Do weryfikacji ręcznej':
+    default:
+      return 'bg-orange-100 text-orange-800 border-orange-300'
+  }
+})
+
+const statusIcon = computed(() => {
+    const status = result.value?.analiza_ai?.status
+    switch (status) {
+        case 'Do akceptacji': return '✅'
+        case 'Do odrzucenia': return '⛔'
+        default: return '⚠️'
+    }
+})
+// ------------------------------------
+
 const populateForm = (data) => {
   const p = data.dane_wniosku?.poszkodowany || {}
   const info = data.dane_wniosku?.informacje_o_wypadku || {}
@@ -146,7 +171,7 @@ const downloadPdf = async () => {
     <!-- Sekcja Upload -->
     <div class="upload-section">
       <div class="input-row">
-        <label>1. Zawiadomienie (PDF/JPG):</label>
+        <label>1. Zawiadomienie (PDF):</label>
         <input type="file" @change="handleZawiadomienieChange" accept=".pdf,.jpg,.jpeg,.png" />
       </div>
       <div class="input-row">
@@ -164,7 +189,14 @@ const downloadPdf = async () => {
 
       <!-- LEWA STRONA: ANALIZA AI (Zawsze widoczna) -->
       <div class="ai-panel">
-        <h3>📊 Analiza AI</h3>
+        <h3>Analiza AI</h3>
+
+        <div class="mb-6 p-4 rounded-lg border-2 text-center shadow-sm" :class="statusClass">
+            <span class="block text-2xl mb-1">{{ statusIcon }}</span>
+            <span class="block font-bold text-lg uppercase tracking-wide">
+                {{ result.analiza_ai.status }}
+            </span>
+        </div>
 
         <div class="score-grid">
           <div class="score-card" :class="{high: result.analiza_ai.szansa_uwzglednienia_ze_byl_nagly > 0.6}">
@@ -194,7 +226,7 @@ const downloadPdf = async () => {
       <!-- PRAWA STRONA: EDYCJA I GENEROWANIE PDF -->
       <div class="form-panel">
         <div class="form-header">
-          <h3>📝 Karta Wypadku (Edycja)</h3>
+          <h3>Karta Wypadku (Edycja)</h3>
           <button @click="downloadPdf" class="btn-pdf">⬇ Pobierz PDF</button>
         </div>
 

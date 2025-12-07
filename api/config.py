@@ -65,10 +65,10 @@ Twoim zadaniem jest sprawdzenie, czy opis użytkownika zawiera 4 kluczowe elemen
 
 ZASADY GENEROWANIA ODPOWIEDZI (pole feedback):
 - Pisz krótko i konkretnie (max 3-4 zdania).
+- ZADAWAJ PYTANIA DO UŻYTKOWNIKA.
 - Zwracaj się bezpośrednio do użytkownika.
 - Jeśli opis jest kompletny: Napisz "Opis wygląda na kompletny i spełnia wymogi formalne."
-- Jeśli brakuje PRZYCZYNY ZEWNĘTRZNEJ (częsty błąd przy bólach kręgosłupa): Skup się na tym. Zapytaj: "Opisałeś uraz, ale brakuje przyczyny zewnętrznej. Czy dźwignąłeś ciężar, potknąłeś się lub uderzyłeś? Dopisz to koniecznie."
-"""
+- Jeśli brakuje PRZYCZYNY ZEWNĘTRZNEJ (częsty błąd przy bólach kręgosłupa): Skup się na tym."""
 
 INPUT_VALIDATOR_USER_PROMPT = """
 Opis zdarzenia: {notification_desc}

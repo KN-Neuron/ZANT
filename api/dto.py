@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Literal
 
 from pydantic import Field, BaseModel
 
@@ -108,7 +108,11 @@ class DescriptionVerificationResult(BaseModel):
             "W wyniku zdarzenia poszkodowany doznał [URAZ]. "
             "Zdarzenie spełnia/nie spełnia przesłanek definicji wypadku przy pracy, ponieważ...'"
         )
-    )
+    ),
+
+    status: Literal["Do akceptacji", "Do weryfikacji ręcznej", "Do odrzucenia"] = (
+        Field(description="Status wniosku. Sam decydujesz, "
+                          "czy jest do zaakceptowania, do odrzucenia, czy do weryfikacji przez człowieka"))
 
 
 class WyjasnieniaPoszkodowanego(BaseModel):
@@ -139,10 +143,11 @@ class Decision(BaseModel):
 
 class FormDataInput(BaseModel):
     notification_desc: str = ""  # Opis ze zgłoszenia
-    victim_desc: str = ""        # Opis z wyjaśnień (lub czatu)
+    victim_desc: str = ""  # Opis z wyjaśnień (lub czatu)
     injuries: str = ""
     activities: str = ""
     external_cause: str = ""
+
 
 class ValidationResult(BaseModel):
     feedback: str = Field(

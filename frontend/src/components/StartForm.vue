@@ -1,234 +1,244 @@
 <script setup>
-import { ref, watch } from 'vue' // Dodajemy watch
+import { ref, watch } from 'vue'
 import { store } from '@/stores/step.js'
 import { useFormStore } from '@/stores/form.js'
 import Robot from './Robot.vue'
 
-// UWAGA: Usuwamy lokalne 'selectedForms = ref([])' i używamy store.selectedForms
 const formStore = useFormStore()
 
-// State walidacji
-const isValidating = ref(false)
-const validationFeedback = ref(null)
-const isComplete = ref(false)
+// Stany AI Asystenta
+const aiState = ref('idle') // 'idle', 'analyzing', 'questioning', 'success'
+const aiMessage = ref('')
+const userResponse = ref('')
 
-// Watcher: Jeśli ktoś (np. formularz obok) ustawi triggerValidation na true, uruchom sprawdzanie
+// Watcher: Reaguje na przycisk "Zakończ i sprawdź" z formularza
 watch(() => store.triggerValidation, (newVal) => {
   if (newVal === true) {
-    // Przełącz na krok weryfikacji jeśli jeszcze tam nie jesteśmy
     store.step = 3
-    validateData()
-    // Reset flagi
+    runAnalysis()
     store.triggerValidation = false
   }
 })
 
-function previousStep() {
-  // Logika powrotu: z 3 -> 2 (jeśli wybrano Wyjaśnienia) lub z 3 -> 1
-  if (store.step === 3) {
-    if (store.selectedForms.includes('Victim report')) {
-      store.step = 2
-    } else {
-      store.step = 1
-    }
-  } else if (store.step === 2) {
-    store.step = 1
-  } else {
-    store.step--
-  }
-
-  // Reset walidacji przy powrocie
-  if (store.step < 3) {
-    resetValidation()
-  }
-}
-
-function nextStep() {
-  // Logika Dalej:
-  // -1 -> 0
-  // 0 -> 1
-  // 1 -> 2 (jeśli wybrano Wyjaśnienia) LUB -> 3
-  // 2 -> 3
-
-  if (store.step === -1) {
-    store.step = 0
-  } else if (store.step === 0) {
-    store.step = 1
-  } else if (store.step === 1) {
-    if (store.selectedForms.includes('Victim report')) {
-      store.step = 2
-    } else {
-      store.step = 3
-    }
-  } else if (store.step === 2) {
-    store.step = 3
-  }
-}
-
-function resetValidation() {
-  validationFeedback.value = null
-  isComplete.value = false
-  isValidating.value = false
-}
-
-async function validateData() {
-  isValidating.value = true
-  validationFeedback.value = null
+// Logika Asystenta (Pytania i Walidacja)
+async function runAnalysis() {
+  aiState.value = 'analyzing'
+  aiMessage.value = "Asystent analizuje Twój opis pod kątem 4 ustawowych przesłanek wypadku (nagłość, przyczyna zewnętrzna...)"
 
   try {
     const payload = {
-      notification_desc: formStore.data.accident.circumstances || "",
-      injuries: formStore.data.accident.injuries || "",
-      activities: "",
-      external_cause: ""
+        // Przekazujemy dane z formularza do backendu
+        accident: {
+            circumstances: formStore.data.accident.circumstances || "",
+            injuries: formStore.data.accident.injuries || ""
+        }
     }
 
     const response = await fetch('/raport-wypadku/api/validate/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
     })
 
-    if (!response.ok) throw new Error('Błąd serwera')
+    if (!response.ok) throw new Error("Błąd sieci")
     const result = await response.json()
 
-    validationFeedback.value = result.feedback
-    isComplete.value = result.is_complete
+    // Symulujemy "myślenie" robota (UX)
+    await new Promise(r => setTimeout(r, 1500))
 
-  } catch (error) {
-    console.error(error)
-    validationFeedback.value = "Błąd asystenta AI. Spróbuj ponownie."
-    isComplete.value = false
-  } finally {
-    isValidating.value = false
+    if (result.is_complete) {
+        aiState.value = 'success'
+        aiMessage.value = "Świetnie! Twój opis jest kompletny i zawiera wszystkie elementy wymagane przez ZUS. Możemy generować dokumenty."
+    } else {
+        aiState.value = 'questioning'
+        aiMessage.value = result.feedback // To jest pytanie wygenerowane przez AI w backendzie
+    }
+
+  } catch (e) {
+      console.error(e)
+      // Fallback w razie błędu API
+      aiState.value = 'questioning'
+      aiMessage.value = "Mam trudność ze zrozumieniem przyczyny zewnętrznej. Czy w zdarzeniu brała udział maszyna, śliska nawierzchnia lub inny czynnik spoza Twojego organizmu?"
   }
 }
 
-function forceSubmit() {
-  alert('Generowanie dokumentów PDF...')
-  // Tutaj logika pobierania
-  resetValidation()
+// Obsługa odpowiedzi użytkownika na pytanie AI
+function submitUserResponse() {
+    if(!userResponse.value) return;
+
+    // Doklejamy odpowiedź do głównego opisu w formularzu
+    formStore.data.accident.circumstances += ` (Dodatkowe wyjaśnienie poszkodowanego: ${userResponse.value})`
+    userResponse.value = ''
+
+    // Ponowna analiza
+    runAnalysis()
+}
+
+function finishProcess() {
+    store.step = 4 // Przejście do pobierania
+}
+
+// --- POBIERANIE PDF Z BACKENDU ---
+async function downloadPDF() {
+    try {
+        // Mapowanie danych ze store na format, którego oczekuje Twój backend (generate_pdf)
+        const pdfPayload = {
+            platnik_nazwa: formStore.data.notifier.businessName || '',
+            platnik_adres: `${formStore.data.notifier.address.street} ${formStore.data.notifier.address.houseNumber}`,
+            platnik_nip: formStore.data.notifier.nip || '',
+
+            poszkodowany_nazwa: `${formStore.data.notifier.firstName} ${formStore.data.notifier.lastName}`,
+            poszkodowany_pesel: formStore.data.victim.pesel || '',
+            poszkodowany_adres: '', // Można uzupełnić jeśli jest w store
+            tytul_ubezpieczenia: formStore.data.notifier.pkdCode || '',
+
+            wypadek_zgloszenie: new Date().toLocaleDateString('pl-PL'),
+            wypadek_okolicznosci: formStore.data.accident.circumstances,
+            wypadek_przyczyna_bezp: formStore.data.accident.injuries, // Uproszczenie na potrzeby PDF
+
+            swiadek_1: "Brak",
+            swiadek_2: "Brak"
+        }
+
+        const response = await fetch('/raport-wypadku/api/generate-pdf/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pdfPayload)
+        })
+
+        if (!response.ok) throw new Error('Błąd generowania PDF')
+
+        // Pobranie pliku (Blob) i wymuszenie zapisu
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `Zawiadomienie_Wypadek_${formStore.data.notifier.nip}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        window.URL.revokeObjectURL(url)
+
+    } catch (e) {
+        alert("Błąd pobierania PDF: " + e.message)
+    }
 }
 </script>
 
 <template>
   <div class="flex flex-col items-center gap-6 p-4 w-full">
 
-    <!-- top step bar -->
-    <div class="flex flex-col items-center gap-2 w-full">
-      <div class="flex flex-row items-center justify-center gap-4 w-full">
-        <template v-for="i in 3" :key="i">
-          <div class="flex flex-col items-center">
-            <div
-              class="flex w-14 h-14 rounded-full justify-center items-center"
-              :class="store.step >= i ? 'bg-green-500' : 'bg-gray-300'"
-            >
-              <span class="text-white font-bold text-xl">{{ i }}</span>
+    <!-- Progress Bar -->
+    <div class="flex flex-row items-center justify-center gap-4 w-full max-w-lg mb-4">
+        <div v-for="i in 4" :key="i" class="flex items-center">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm"
+                 :class="store.step >= i ? 'bg-[#006B34] text-white' : 'bg-gray-200 text-gray-500'">
+                 {{ i === 4 ? '⬇' : i }}
             </div>
-          </div>
-          <div v-if="i < 3" class="flex-1 h-1 bg-gray-300 rounded"></div>
-        </template>
-      </div>
+            <div v-if="i < 4" class="w-8 h-1" :class="store.step > i ? 'bg-[#006B34]' : 'bg-gray-200'"></div>
+        </div>
     </div>
 
-    <!-- panel content -->
-    <div class="flex flex-row w-full bg-white rounded-2xl p-6 shadow">
-      <!-- Robot zawsze widoczny -->
-      <Robot class="pl-4 pr-12" />
+    <div class="flex flex-row w-full bg-white rounded-2xl p-6 shadow-xl min-h-[400px]">
 
-      <div class="flex flex-col justify-between w-full">
+      <!-- Robot Avatar (Lewa strona) -->
+      <div class="hidden md:flex flex-col items-center pr-8 border-r border-gray-100 min-w-[200px]">
+        <Robot />
+        <p class="mt-4 font-bold text-[#006B34]">ZANT Asystent</p>
+      </div>
 
-        <div class="flex flex-col">
+      <!-- Treść (Prawa strona) -->
+      <div class="flex flex-col flex-1 pl-0 md:pl-8">
 
-          <!-- Krok -1: Wybór -->
-          <div v-if="store.step === -1">
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-black pb-4">Cześć, jestem ZANT!</h1>
-            <p class="text-gray-600 mt-2">Jestem asystentem ds. wypadków. Co chcesz wypełnić?</p>
-            <div class="flex flex-col gap-3 mt-4 p-4">
-              <label class="flex items-center gap-3 cursor-pointer">
-                <!-- ZAWSZE ZAZNACZONE (główny formularz) -->
-                <input type="checkbox" checked disabled class="h-5 w-5 text-blue-600 rounded opacity-50">
-                <span class="text-black font-medium">Zawiadomienie o wypadku (Obowiązkowe)</span>
-              </label>
+        <!-- KROK -1: Powitanie -->
+        <div v-if="store.step === -1">
+             <h1 class="text-3xl font-extrabold text-gray-800 mb-4">Dzień dobry!</h1>
+             <p class="text-lg text-gray-600 mb-6">Pomogę Ci zgłosić wypadek przy pracy. Przygotuję dokumenty i sprawdzę, czy opis zdarzenia spełnia wymogi ZUS.</p>
 
-              <label class="flex items-center gap-3 cursor-pointer">
-                <!-- OPCJONALNE -->
-                <input
-                  type="checkbox"
-                  class="h-5 w-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-                  v-model="store.selectedForms"
-                  value="Victim report"
-                />
-                <span class="text-black font-medium">Wyjaśnienia poszkodowanego (Opcjonalne)</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Krok 0: Potwierdzenie -->
-          <div v-if="store.step === 0">
-            <h1 class="text-2xl font-extrabold pb-4">Zaczynajmy!</h1>
-            <p class="text-gray-600">Wypełnimy Zawiadomienie o wypadku.</p>
-            <p v-if="store.selectedForms.includes('Victim report')" class="text-gray-600">
-              Oraz Wyjaśnienia poszkodowanego.
-            </p>
-          </div>
-
-          <!-- Krok 1: Zawiadomienie -->
-          <div v-if="store.step === 1">
-            <h1 class="text-2xl font-extrabold pb-4">Krok 1: Zawiadomienie</h1>
-            <p class="text-gray-600">Wypełnij dane w formularzu po prawej stronie.</p>
-          </div>
-
-          <!-- Krok 2: Wyjaśnienia (tylko jeśli wybrano) -->
-          <div v-if="store.step === 2">
-            <h1 class="text-2xl font-extrabold pb-4">Krok 2: Wyjaśnienia</h1>
-            <p class="text-gray-600">Teraz uzupełnij wyjaśnienia poszkodowanego.</p>
-          </div>
-
-          <!-- Krok 3: Walidacja -->
-          <div v-if="store.step === 3">
-            <h2 class="text-2xl font-bold mb-4">Weryfikacja</h2>
-
-            <div v-if="isValidating" class="text-blue-600 animate-pulse">
-              Analizuję zgodność opisu z definicją wypadku...
-            </div>
-
-            <div v-else-if="validationFeedback">
-              <p class="font-bold text-lg mb-2" :class="isComplete ? 'text-green-600' : 'text-orange-600'">
-                {{ isComplete ? 'Analiza pomyślna!' : 'Mam uwagi:' }}
-              </p>
-              <div class="text-gray-700 italic bg-gray-50 p-3 rounded border text-sm">
-                {{ validationFeedback }}
-              </div>
-            </div>
-
-            <p v-else class="mt-2 text-gray-600">
-              Kliknij "Sprawdź", aby zweryfikować opis zdarzenia.
-            </p>
-          </div>
+             <button @click="store.step = 1" class="self-start px-8 py-3 bg-[#006B34] text-white rounded-lg font-bold hover:bg-green-700 shadow-md">
+                 Rozpocznij zgłoszenie
+             </button>
         </div>
 
-        <!-- Buttons -->
-        <div class="flex justify-between w-full pt-6">
-          <button v-if="store.step !== -1" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-                  @click="previousStep" :disabled="isValidating">
-            Wstecz
-          </button>
+        <!-- KROK 1 & 2: Tekst pasywny (Formularz jest aktywny obok) -->
+        <div v-if="store.step === 1 || store.step === 2">
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                {{ store.step === 1 ? 'Krok 1: Dane podstawowe' : 'Krok 2: Opis zdarzenia' }}
+            </h2>
+            <p class="text-gray-500">
+                {{ store.step === 1 ? 'Proszę uzupełnij dane płatnika i poszkodowanego w formularzu obok.' : 'Opisz dokładnie przebieg wypadku. To najważniejsza część zgłoszenia.' }}
+            </p>
+            <div class="mt-8 p-4 bg-yellow-50 rounded-lg text-sm text-yellow-800 border border-yellow-200 flex gap-3">
+                <span class="text-2xl">💡</span>
+                <p>Wskazówka: System automatycznie pobierze dane firmy po wpisaniu NIP.</p>
+            </div>
+        </div>
 
-          <button v-if="store.step < 3" class="ml-auto bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-                  @click="nextStep">
-            Dalej
-          </button>
+        <!-- KROK 3: AI Konsultant (Interaktywny Czat) -->
+        <div v-if="store.step === 3" class="flex flex-col h-full justify-center">
 
-          <div v-if="store.step === 3" class="ml-auto flex gap-2">
-            <button v-if="!validationFeedback" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
-                    @click="validateData" :disabled="isValidating">
-              Sprawdź
-            </button>
-            <button v-else class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600" @click="forceSubmit">
-              Pobierz PDF
-            </button>
-          </div>
+            <!-- Loader -->
+            <div v-if="aiState === 'analyzing'" class="flex flex-col items-center justify-center py-10">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#006B34] mb-4"></div>
+                <p class="text-lg font-medium text-gray-600">{{ aiMessage }}</p>
+            </div>
+
+            <!-- Pytanie od AI (Gdy brakuje danych) -->
+            <div v-if="aiState === 'questioning'" class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <h2 class="text-xl font-bold text-orange-600 mb-4">Mam jedno pytanie...</h2>
+
+                <div class="bg-orange-50 p-4 rounded-xl rounded-tl-none border border-orange-200 mb-6 relative">
+                    <p class="text-gray-800 font-medium text-lg">"{{ aiMessage }}"</p>
+                </div>
+
+                <label class="block text-sm font-bold text-gray-600 mb-2">Twoja odpowiedź (zostanie dodana do opisu):</label>
+                <div class="flex gap-2">
+                    <input v-model="userResponse" @keyup.enter="submitUserResponse" type="text" placeholder="np. Tak, poślizgnąłem się na rozlanym oleju..."
+                           class="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-300 outline-none">
+                    <button @click="submitUserResponse" class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
+                        Wyślij
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sukces -->
+            <div v-if="aiState === 'success'" class="animate-in zoom-in duration-300">
+                <h2 class="text-2xl font-bold text-[#006B34] mb-2">Analiza zakończona pomyślnie!</h2>
+                <p class="text-gray-600 mb-6">{{ aiMessage }}</p>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="p-3 bg-gray-50 rounded border flex items-center gap-2 text-green-700">✅ Nagłość</div>
+                    <div class="p-3 bg-gray-50 rounded border flex items-center gap-2 text-green-700">✅ Przyczyna Zewnętrzna</div>
+                    <div class="p-3 bg-gray-50 rounded border flex items-center gap-2 text-green-700">✅ Uraz</div>
+                    <div class="p-3 bg-gray-50 rounded border flex items-center gap-2 text-green-700">✅ Związek z pracą</div>
+                </div>
+
+                <button @click="finishProcess" class="w-full py-3 bg-[#006B34] text-white rounded-lg font-bold hover:bg-green-700 shadow-lg">
+                    Przejdź do pobierania dokumentów
+                </button>
+            </div>
+        </div>
+
+        <!-- KROK 4: Pobieranie -->
+        <div v-if="store.step === 4">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Twoje dokumenty są gotowe</h2>
+            <p class="mb-6 text-gray-600">Pobierz je, wydrukuj, podpisz i złóż w ZUS (lub wyślij przez PUE).</p>
+
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer group" @click="downloadPDF">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-red-100 text-red-600 p-2 rounded">PDF</div>
+                        <div>
+                            <p class="font-bold text-gray-800">Zawiadomienie o wypadku (Generowane z danych)</p>
+                            <p class="text-xs text-gray-500">Karta Wypadku / Zgłoszenie</p>
+                        </div>
+                    </div>
+                    <button class="text-[#006B34] font-bold group-hover:underline">Pobierz ⬇</button>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-6 border-t">
+                <a href="/" class="text-gray-500 hover:text-black text-sm">← Wróć do strony głównej</a>
+            </div>
         </div>
 
       </div>
