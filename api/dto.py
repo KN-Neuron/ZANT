@@ -133,3 +133,27 @@ class Decision(BaseModel):
     uzasadnienie: Optional[str] = Field(description="Opis okoliczności i przyczyn wypadku")
     braki: Optional[list[str]] = None
     wiadomosc_do_klienta: Optional[str] = None
+
+
+class ValidationResult(BaseModel):
+    # Oceny w skali 0-1 (dla paska postępu na frontendzie)
+    nagłość_score: float = Field(description="Ocena spełnienia kryterium nagłości (0.0 - 1.0)")
+    przyczyna_zewnetrzna_score: float = Field(description="Ocena istnienia przyczyny zewnętrznej (0.0 - 1.0)")
+    uraz_score: float = Field(description="Ocena udokumentowania urazu (0.0 - 1.0)")
+    zwiazek_z_praca_score: float = Field(description="Ocena związku zdarzenia z działalnością gospodarczą (0.0 - 1.0)")
+
+    # Feedback tekstowy
+    sugestie: str = Field(description="Ogólne sugestie co do poprawy opisu, sformułowane w sposób pomocny.")
+    pytania_pomocnicze: list[str] = Field(
+        description="Lista konkretnych pytań, które pomogą użytkownikowi uzupełnić braki (np. 'Co dokładnie spowodowało upadek?').")
+
+    # Flaga czy można składać
+    czy_gotowe: bool = Field(description="Czy opis jest na tyle kompletny, że można generować PDF.")
+
+
+class FormDataInput(BaseModel):
+    notification_desc: str = ""
+    victim_desc: str = ""
+    injuries: str = ""
+    activities: str = ""
+    external_cause: str = ""

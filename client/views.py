@@ -16,10 +16,40 @@ from reportlab.pdfbase.ttfonts import TTFont
 # Importy API
 from api.parser import Parser
 from api.inspector import Inspector
-from api.dto import WyjasnieniaPoszkodowanego
+from api.dto import WyjasnieniaPoszkodowanego, FormDataInput
+from api.validator import FormValidator
 
 TEMP_DIR = os.path.join(settings.BASE_DIR, 'temp_uploads')
 os.makedirs(TEMP_DIR, exist_ok=True)
+
+
+@csrf_exempt
+def validate_accident_data(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+
+            # Mapowanie z frontendowego JSON na DTO
+            input_data = FormDataInput(
+                notification_desc=data.get('accident', {}).get('circumstances', ''),
+                victim_desc=data.get('description', {}).get('text', ''),
+                injuries=data.get('accident', {}).get('injuries', ''),
+                activities=data.get('workDetails', {}).get('activities', ''),
+                external_cause=data.get('accident', {}).get('machineDetails', '')  # Uproszczenie dla przykładu
+            )
+
+            validator = FormValidator()
+            result = validator.validate_forms(input_data)
+
+            if result:
+                return JsonResponse(result.model_dump())
+            else:
+                return JsonResponse({'error': 'AI failed to validate'}, status=500)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
 def index(request):

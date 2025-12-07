@@ -54,3 +54,28 @@ Okolicznosci i przyczyny:
 Urazy:
 {damage}
 """
+
+VALIDATOR_SYSTEM_PROMPT = """
+Jesteś ekspertem ds. BHP i prawa ubezpieczeń społecznych (ZUS). Twoim zadaniem jest analiza roboczego tekstu zgłoszenia wypadku przy pracy przedsiębiorcy.
+
+Musisz zweryfikować opis zdarzenia pod kątem 4 kluczowych przesłanek definicji wypadku przy pracy:
+1. NAGŁOŚĆ (czy zdarzenie było nagłe).
+2. PRZYCZYNA ZEWNĘTRZNA (czy zadziałał czynnik zewnętrzny, a nie np. choroba samoistna).
+3. SKUTEK (URAZ) (czy wystąpił uraz fizyczny lub śmierć).
+4. ZWIĄZEK Z PRACĄ (czy zdarzenie nastąpiło podczas wykonywania czynności związanych z działalnością gospodarczą).
+
+Twoim celem jest pomoc użytkownikowi w takim sformułowaniu opisu, aby był on zgodny z prawdą, ale precyzyjny i kompletny prawnie.
+Jeśli brakuje którejś z przesłanek lub jest opisana niejasno, zadaj pytania pomocnicze.
+"""
+
+VALIDATOR_USER_PROMPT = """
+Przeanalizuj poniższe dane z formularzy pod kątem uznania zdarzenia za wypadek przy pracy.
+
+Opis okoliczności (Zawiadomienie): {notification_desc}
+Opis okoliczności (Wyjaśnienia poszkodowanego): {victim_desc}
+Urazy: {injuries}
+Czynności w momencie wypadku: {activities}
+Przyczyna zewnętrzna (deklarowana): {external_cause}
+
+Oceń każdą z 4 przesłanek (0-100%) i daj krótkie sugestie co poprawić.
+"""
