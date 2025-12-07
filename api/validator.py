@@ -3,7 +3,7 @@ from logging import getLogger
 from dotenv import load_dotenv
 from pydantic_ai import Agent
 
-from api.config import MODEL, VALIDATOR_SYSTEM_PROMPT, VALIDATOR_USER_PROMPT
+from api.config import MODEL, INPUT_VALIDATOR_SYSTEM_PROMPT, INPUT_VALIDATOR_USER_PROMPT
 from api.dto import ValidationResult, FormDataInput
 
 load_dotenv()
@@ -15,7 +15,7 @@ class FormValidator:
         self.agent = Agent(
             model=MODEL,
             output_type=ValidationResult,
-            system_prompt=VALIDATOR_SYSTEM_PROMPT,
+            system_prompt=INPUT_VALIDATOR_SYSTEM_PROMPT,
         )
 
     def validate_forms(self, data: FormDataInput) -> ValidationResult | None:
@@ -23,7 +23,7 @@ class FormValidator:
 
         try:
             result = self.agent.run_sync(
-                VALIDATOR_USER_PROMPT.format(
+                INPUT_VALIDATOR_USER_PROMPT.format(
                     notification_desc=data.notification_desc or "Brak opisu",
                     victim_desc=data.victim_desc or "Brak opisu",
                     injuries=data.injuries or "Nie podano",
