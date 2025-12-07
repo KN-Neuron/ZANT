@@ -133,3 +133,22 @@ class Decision(BaseModel):
     uzasadnienie: Optional[str] = Field(description="Opis okoliczności i przyczyn wypadku")
     braki: Optional[list[str]] = None
     wiadomosc_do_klienta: Optional[str] = None
+
+class ValidationResult2(BaseModel):
+    feedback: str = Field(
+        description=(
+            "Przyjazna, kompletna wiadomość dla użytkownika. "
+            "Zawiera sugestie poprawy, pytania pomocnicze oraz zachętę. "
+            "Wyjaśnia, dlaczego warto dodać szczegóły (szansa na uznanie wypadku)."
+        )
+    )
+    is_complete: bool = Field(
+        description="Czy opis wydaje się na tyle kompletny, że można go zaakceptować (True/False)."
+    )
+
+class FormDataInput2(BaseModel):
+    notification_desc: str = ""
+    victim_desc: str = ""
+    injuries: str = ""
+    activities: str = ""
+    external_cause: str = ""
